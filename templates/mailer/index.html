@@ -1,0 +1,178 @@
+<!doctype html>
+{% load staticfiles %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Greetings Cards Spammers</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <script src="{% static "js/jquery-2.1.1.js" %}"></script>
+    <script>
+        $(document).ready(function () {
+            $("table tr").hover(function () {
+                $("table *").css("background-color", ""); // remove background color from everything (un-hover)
+                hoveretr = this;
+                $("td:contains(.)").each(function () {
+
+                    function processchildrow(theparentrow) {
+                        parenttbl = $(theparentrow).parents("table");
+                        found = 0; // find state machine marker
+                        markrows = new Array();
+                        parenttbl.find("tr").each(function () {
+                            var foundrow = this;
+                            if (found == 0 && foundrow == theparentrow) found = 1;
+                            if (found == 1 && $(foundrow).is(":contains(Orders)")) {
+                                orderscll = $(foundrow).find("td").eq(2);
+                                numorders = +orderscll.text().split(" ")[1]; //use + for faster integer
+                                if (numorders > 3) markrows[markrows.length] = foundrow;//put in array for marking later
+                                return
+                            }
+                            if (found == 1 && foundrow != theparentrow && $(foundrow).find("td:first").text().length) // has company name in first cell
+                                found = 2;
+                        });
+                        for (key in markrows) {
+                            row = markrows[key]
+                            $(row).find("td").css("background-color", "yellow");
+                        }
+                        return markrows
+
+
+                    }
+
+                    price = $(this).text();
+                    trueprice = "";
+                    if (price.indexOf(".", price.length - ".".length) === -1) {
+                        trueprice = price;
+                    }
+
+                    if (trueprice) {
+                        if (parseInt(trueprice) > 50000) {
+                            finalprice = parseInt(trueprice);
+                            firstsib = $(this).siblings(":first");
+                            therow = $(firstsib).parents("tr");
+
+                            $(therow).find("td").each(function (elem) {
+                                elem = $(this);
+
+                                if (therow[0] !== hoveretr) return; // === better than ==
+
+                                if ($(elem).css("background-color"))
+                                    $(elem).css("background-color", ""); // remove background color
+
+                                $(elem).css("background-color", 'green');
+                                processchildrow(therow[0]);
+                            });
+                        }
+                        else {
+                            finalprice = parseInt(trueprice);
+                            firstsib = $(this).siblings(":first");
+                            therow = $(firstsib).parents("tr");
+
+                            $(therow).find("td").each(function (elem) {
+                                elem = $(this);
+                                if (therow[0] !== hoveretr) return; // === better than ==
+
+                                if ($(elem).css("background-color"))
+                                    $(elem).css("background-color", ""); // remove background color
+
+                                $(elem).css("background-color", 'orange');
+                            });
+                        }
+                    }
+
+
+                });
+            });
+        });
+        $(document).ready(function () {
+            $("#myInput").on("keyup", function () {
+                var value = $(this).val().toLowerCase();
+                $("#myTable tr").filter(function () {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+        });
+
+    </script>
+</head>
+<body>
+<div style="width:1020px; margin: 0 auto; border:1px solid blue;">
+    <div class="table-responsive">
+        {% if is_paginated %}
+            <nav aria-label="Page navigation example" class="mt-2">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}"
+                               tabindex="-1">Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled ">
+                            <a class="page-link" tabindex="-1">Previous</a>
+                        </li>
+                    {% endif %}
+
+
+                    {% for page in paginator.page_range %}
+                        <li class="page-item {% if page == page_obj.number %} active {% endif %} ">
+                            <a class="page-link" href="?page={{ page }}">{{ page }}</a>
+                        </li>
+                    {% endfor %}
+
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link inactive">Next</a>
+                        </li>
+                    {% endif %}
+
+
+                </ul>
+
+            </nav>
+        {% endif %}
+        <div class="col-sm-3 mb-2">
+
+            <input id="myInput" class="form-control" type="text" placeholder="Search..">
+        </div>
+        <table class="table">
+            <thead class="thead-dark">
+
+            <tr>
+                <th>Name</th>
+                <th>Order Count</th>
+                <th>Order Sum</th>
+                <th>Select</th>
+            </tr>
+            </thead>
+            <tbody id="myTable">
+
+            {% for company in company_list %}
+                <tr>
+                    <td>{{ company.name }}</td>
+                    <td>{{ company.order_count }}</td>
+                    <td>{{ company.order_sum|floatformat:2 }}</td>
+                    <td><input type="checkbox" name="select{{ company.pk }}" id=""></td>
+                </tr>
+                {% for contact in company.contacts.all %}
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>{{ contact.first_name }} {{ contact.last_name }}</td>
+                        <td>Orders: {{ contact.order_count }}</td>
+                        <td></td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
